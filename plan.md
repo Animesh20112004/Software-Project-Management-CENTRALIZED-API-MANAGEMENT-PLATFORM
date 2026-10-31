@@ -1,5 +1,7 @@
 # Centralized API Management Platform: Development Plan
 
+**Implementation status:** All six phases are implemented. The complete local demo is verified. Docker/PostgreSQL/Redis configuration is included, with runtime verification pending on a Docker-equipped machine. See `README.md` and `VERIFICATION.md` for the current setup and evidence. A free embedded database and local limiter let the full demo run without Docker.
+
 Build a small academic prototype based on `SPM.pdf`. Each phase adds a working feature to the previous version and ends with a short demo.
 
 ## Tech stack

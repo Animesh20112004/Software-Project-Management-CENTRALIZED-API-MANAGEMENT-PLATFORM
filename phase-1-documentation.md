@@ -1,5 +1,7 @@
 # Phase 1: Implementation Guide
 
+> Historical snapshot of Phase 1. The complete application is now documented in [README.md](README.md) and [IMPLEMENTATION.md](IMPLEMENTATION.md).
+
 ## 1. What this phase achieves
 
 Phase 1 builds the foundation of our Centralized API Management Platform. We can open a dashboard, check which components are reachable, and send a real request to the API gateway.

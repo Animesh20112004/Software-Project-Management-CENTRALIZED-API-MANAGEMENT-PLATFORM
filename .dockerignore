@@ -1,0 +1,10 @@
+node_modules
+.npm-cache
+.git
+.env
+data
+.artifacts
+**/.next
+*.pdf
+*.jpg
+*.log

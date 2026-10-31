@@ -12,6 +12,9 @@ const env = {
   USERS_URL: `http://127.0.0.1:${usersPort}`,
   PRODUCTS_URL: `http://127.0.0.1:${productsPort}`,
   NEXT_TELEMETRY_DISABLED: '1',
+  DASHBOARD_ORIGINS:
+    process.env.DASHBOARD_ORIGINS ||
+    `http://localhost:${process.env.DASHBOARD_PORT || '3000'},http://127.0.0.1:${process.env.DASHBOARD_PORT || '3000'}`,
 };
 const children = [];
 let stopping = false;
@@ -24,14 +27,32 @@ function stop(code = 0) {
 function start(name, args, cwd = root) {
   const child = spawn(process.execPath, args, { cwd, env, stdio: 'inherit' });
   children.push(child);
-  child.on('error', (error) => { console.error(`${name}: ${error.message}`); stop(1); });
+  child.on('error', (error) => {
+    console.error(`${name}: ${error.message}`);
+    stop(1);
+  });
   child.on('exit', (code) => {
-    if (!stopping) { console.error(`${name} stopped (${code}). Shutting down the demo.`); stop(code || 1); }
+    if (!stopping) {
+      console.error(`${name} stopped (${code}). Shutting down the demo.`);
+      stop(code || 1);
+    }
   });
 }
 start('Users service', ['services/users/server.mjs']);
 start('Products service', ['services/products/server.mjs']);
 start('Gateway', ['apps/gateway/server.mjs']);
-start('Dashboard', [fileURLToPath(new URL('../node_modules/next/dist/bin/next', import.meta.url)), 'dev', '--webpack', '--hostname', '127.0.0.1', '--port', process.env.DASHBOARD_PORT || '3000'], dashboard);
+start(
+  'Dashboard',
+  [
+    fileURLToPath(new URL('../node_modules/next/dist/bin/next', import.meta.url)),
+    'dev',
+    '--webpack',
+    '--hostname',
+    '127.0.0.1',
+    '--port',
+    process.env.DASHBOARD_PORT || '3000',
+  ],
+  dashboard,
+);
 process.on('SIGINT', () => stop());
 process.on('SIGTERM', () => stop());

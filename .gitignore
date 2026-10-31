@@ -5,3 +5,6 @@ node_modules/
 *.log
 coverage/
 test-results/
+data/
+.artifacts/
+output/
