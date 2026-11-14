@@ -1,0 +1,44 @@
+# =================================================================
+# Render Blueprint Configuration
+# Docs: https://render.com/docs/blueprint-spec
+# =================================================================
+services:
+  - type: web
+    name: centralized-api-platform
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_MODE
+        value: postgres
+      - key: RATE_LIMIT_MODE
+        value: memory
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAMESITE
+        value: Strict
+      - key: SEED_DEMO_DATA
+        value: "true"
+      - key: ENABLE_SAMPLE_SERVICES
+        value: "true"
+      - key: DATABASE_SSL
+        value: "true"
+      - key: DATABASE_REJECT_UNAUTHORIZED
+        value: "false"
+      - key: ADMIN_USER
+        value: admin
+      # Secure auto-generated password on initial deployment
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      # Connection string to Neon / external PostgreSQL (configure in Render Dashboard)
+      - key: DATABASE_URL
+        sync: false
+      # Optional external Redis if using RATE_LIMIT_MODE=redis
+      - key: REDIS_URL
+        sync: false

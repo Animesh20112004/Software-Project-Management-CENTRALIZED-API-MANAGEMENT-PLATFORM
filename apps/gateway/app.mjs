@@ -31,13 +31,26 @@ export async function buildGateway(options = {}) {
     logController: new LogController({ disableRequestLogging: true }),
     bodyLimit: 1048576,
   });
+  const allowedOrigins = (process.env.DASHBOARD_ORIGINS || 'http://localhost:3000,http://127.0.0.1:3000')
+    .split(',')
+    .map((s) => s.trim().replace(/\/$/, ''))
+    .filter(Boolean);
+  if (process.env.RENDER_EXTERNAL_URL) {
+    const renderUrl = process.env.RENDER_EXTERNAL_URL.trim().replace(/\/$/, '');
+    if (!allowedOrigins.includes(renderUrl)) allowedOrigins.push(renderUrl);
+  }
+  if (process.env.FRONTEND_URL) {
+    const frontendUrl = process.env.FRONTEND_URL.trim().replace(/\/$/, '');
+    if (!allowedOrigins.includes(frontendUrl)) allowedOrigins.push(frontendUrl);
+  }
+
   const config = {
     usersUrl: process.env.USERS_URL || 'http://127.0.0.1:4001',
     productsUrl: process.env.PRODUCTS_URL || 'http://127.0.0.1:4002',
     adminUser: process.env.ADMIN_USER || 'admin',
     adminPassword: process.env.ADMIN_PASSWORD || 'local-demo-123',
-    origins: (process.env.DASHBOARD_ORIGINS || 'http://localhost:3000,http://127.0.0.1:3000').split(','),
-    upstreamTimeout: 5000,
+    origins: allowedOrigins,
+    upstreamTimeout: Number(process.env.UPSTREAM_TIMEOUT_MS || 5000),
     ...options.config,
   };
   const store = options.store || (await createStore());
@@ -50,7 +63,9 @@ export async function buildGateway(options = {}) {
   }
   const loginLimiter = createMemoryLimiter();
   const verifyPassword = passwordVerifier(config.adminPassword);
-  if (options.seed !== false) await store.seed(config.usersUrl, config.productsUrl);
+  if (options.seed !== false && process.env.SEED_DEMO_DATA !== 'false') {
+    await store.seed(config.usersUrl, config.productsUrl);
+  }
   app.decorate('store', store);
   app.addHook('onClose', async () => {
     await loginLimiter.close();
@@ -59,6 +74,9 @@ export async function buildGateway(options = {}) {
   });
   app.addHook('onRequest', async (request, reply) => {
     reply.header('Cache-Control', 'no-store');
+    reply.header('X-Content-Type-Options', 'nosniff');
+    reply.header('X-Frame-Options', 'DENY');
+    reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
     request.startedAt = performance.now();
     if (request.url.startsWith('/admin/') && !['GET', 'HEAD'].includes(request.method)) {
       if (request.headers.origin && !config.origins.includes(request.headers.origin))
@@ -387,10 +405,9 @@ export async function buildGateway(options = {}) {
     if (typeof rawKey !== 'string' || rawKey.length > 200 || !rawKey.startsWith('cap_'))
       return error(reply, 401, 'A valid X-API-Key header is required.');
     const key = (
-      await store.query(
-        'SELECT id,name,rate_limit,window_seconds,revoked FROM api_keys WHERE key_hash=$1',
-        [hash(rawKey)],
-      )
+      await store.query('SELECT id,name,rate_limit,window_seconds,revoked FROM api_keys WHERE key_hash=$1', [
+        hash(rawKey),
+      ])
     ).rows[0];
     if (!key) return error(reply, 401, 'API key is invalid or revoked.');
     request.client = key;

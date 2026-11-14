@@ -29,17 +29,50 @@ CREATE INDEX IF NOT EXISTS request_logs_created_idx ON request_logs(created_at D
 CREATE INDEX IF NOT EXISTS request_logs_client_idx ON request_logs(client_id);
 CREATE TABLE IF NOT EXISTS app_meta (name TEXT PRIMARY KEY);
 `;
+
 export async function createStore(config = {}) {
-  const mode = config.mode || process.env.DB_MODE || 'embedded';
+  const mode =
+    config.mode || process.env.DB_MODE || (process.env.NODE_ENV === 'production' ? 'postgres' : 'embedded');
   let db;
+
   if (mode === 'postgres') {
-    const pool = new pg.Pool({
-      connectionString: config.url || process.env.DATABASE_URL,
-      connectionTimeoutMillis: 3000,
-      statement_timeout: 5000,
-      max: 8,
+    const connectionString = config.url || process.env.DATABASE_URL;
+    if (!connectionString) {
+      throw new Error('DATABASE_URL environment variable is required when DB_MODE=postgres');
+    }
+
+    const isProduction = process.env.NODE_ENV === 'production';
+    const sslEnv = process.env.DATABASE_SSL;
+    const isLocalHost =
+      connectionString.includes('127.0.0.1') ||
+      connectionString.includes('localhost') ||
+      connectionString.includes('postgres:5432');
+    const requiresSsl =
+      sslEnv === 'true' ||
+      (sslEnv !== 'false' &&
+        (connectionString.includes('neon.tech') ||
+          connectionString.includes('sslmode=require') ||
+          (isProduction && !isLocalHost)));
+
+    const poolConfig = {
+      connectionString,
+      connectionTimeoutMillis: Number(process.env.DATABASE_CONNECT_TIMEOUT_MS || 10000),
+      statement_timeout: Number(process.env.DATABASE_STATEMENT_TIMEOUT_MS || 10000),
+      idleTimeoutMillis: Number(process.env.DATABASE_IDLE_TIMEOUT_MS || 30000),
+      max: Number(process.env.DATABASE_MAX_CONNECTIONS || 8),
+    };
+
+    if (requiresSsl) {
+      poolConfig.ssl = {
+        rejectUnauthorized: process.env.DATABASE_REJECT_UNAUTHORIZED === 'true',
+      };
+    }
+
+    const pool = new pg.Pool(poolConfig);
+    pool.on('error', (err) => {
+      console.error('PostgreSQL client connection error:', err.message);
     });
-    pool.on('error', () => {});
+
     db = {
       query: (sql, values) => pool.query(sql, values),
       close: () => pool.end(),
@@ -69,6 +102,7 @@ export async function createStore(config = {}) {
   } else {
     throw new Error('DB_MODE must be embedded or postgres');
   }
+
   return {
     mode,
     query: (sql, values = []) => db.query(sql, values),

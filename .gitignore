@@ -1,10 +1,43 @@
+# Dependencies
 node_modules/
 .npm-cache/
+
+# Production builds
 .next/
+dist/
+build/
+
+# Environment and secrets
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*
+!.env.example
+
+# Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing & Coverage
 coverage/
 test-results/
+
+# Local databases & persistent state
 data/
+*.sqlite
+*.sqlite3
+
+# Artifacts & scratch
 .artifacts/
 output/
+.temp/
+tmp/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+.neon

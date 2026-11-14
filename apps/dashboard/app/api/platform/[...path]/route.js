@@ -8,7 +8,7 @@ async function bridge(request, { params }) {
     return Response.json({ error: 'Invalid path.' }, { status: 400 });
   try {
     const headers = {};
-    for (const name of ['cookie', 'content-type', 'x-api-key', 'origin']) {
+    for (const name of ['cookie', 'content-type', 'x-api-key', 'origin', 'authorization', 'accept']) {
       const value = request.headers.get(name);
       if (value) headers[name] = value;
     }
@@ -16,17 +16,15 @@ async function bridge(request, { params }) {
     if (body && Buffer.byteLength(body) > 1048576)
       return Response.json({ error: 'Maximum request size is 1 MB.' }, { status: 413 });
     const query = new URL(request.url).search;
-    const upstream = await fetch(
-      `${process.env.GATEWAY_URL || 'http://127.0.0.1:4000'}/${path.map(encodeURIComponent).join('/')}${query}`,
-      {
-        method: request.method,
-        headers,
-        body: body || undefined,
-        cache: 'no-store',
-        redirect: 'manual',
-        signal: AbortSignal.timeout(15000),
-      },
-    );
+    const gatewayUrl = (process.env.GATEWAY_URL || 'http://127.0.0.1:4000').replace(/\/$/, '');
+    const upstream = await fetch(`${gatewayUrl}/${path.map(encodeURIComponent).join('/')}${query}`, {
+      method: request.method,
+      headers,
+      body: body || undefined,
+      cache: 'no-store',
+      redirect: 'manual',
+      signal: AbortSignal.timeout(15000),
+    });
     const responseHeaders = new Headers({ 'Cache-Control': 'no-store' });
     for (const name of [
       'content-type',
@@ -45,9 +43,10 @@ async function bridge(request, { params }) {
     );
   } catch {
     return Response.json(
-      { error: 'Gateway unavailable. Start the platform and try again.' },
+      { error: 'Gateway unavailable. Verify the gateway service is running and accessible.' },
       { status: 502 },
     );
   }
 }
+
 export { bridge as GET, bridge as POST, bridge as PUT, bridge as PATCH, bridge as DELETE, bridge as HEAD };

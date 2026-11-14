@@ -1,5 +1,16 @@
 export default {
   devIndicators: false,
-  // Do not echo client paths/query strings to the development terminal.
   logging: { incomingRequests: false },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        ],
+      },
+    ];
+  },
 };

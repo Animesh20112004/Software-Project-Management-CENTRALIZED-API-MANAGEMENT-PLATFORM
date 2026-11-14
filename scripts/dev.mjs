@@ -6,6 +6,8 @@ const dashboard = fileURLToPath(new URL('../apps/dashboard/', import.meta.url));
 const gatewayPort = process.env.GATEWAY_PORT || '4000';
 const usersPort = process.env.USERS_PORT || '4001';
 const productsPort = process.env.PRODUCTS_PORT || '4002';
+const dashboardPort = process.env.DASHBOARD_PORT || '3000';
+
 const env = {
   ...process.env,
   GATEWAY_URL: `http://127.0.0.1:${gatewayPort}`,
@@ -13,19 +15,25 @@ const env = {
   PRODUCTS_URL: `http://127.0.0.1:${productsPort}`,
   NEXT_TELEMETRY_DISABLED: '1',
   DASHBOARD_ORIGINS:
-    process.env.DASHBOARD_ORIGINS ||
-    `http://localhost:${process.env.DASHBOARD_PORT || '3000'},http://127.0.0.1:${process.env.DASHBOARD_PORT || '3000'}`,
+    process.env.DASHBOARD_ORIGINS || `http://localhost:${dashboardPort},http://127.0.0.1:${dashboardPort}`,
 };
+
 const children = [];
 let stopping = false;
+
 function stop(code = 0) {
   if (stopping) return;
   stopping = true;
   for (const child of children) child.kill();
   process.exitCode = code;
 }
-function start(name, args, cwd = root) {
-  const child = spawn(process.execPath, args, { cwd, env, stdio: 'inherit' });
+
+function start(name, args, cwd = root, customEnv = {}) {
+  const child = spawn(process.execPath, args, {
+    cwd,
+    env: { ...env, ...customEnv },
+    stdio: 'inherit',
+  });
   children.push(child);
   child.on('error', (error) => {
     console.error(`${name}: ${error.message}`);
@@ -38,9 +46,13 @@ function start(name, args, cwd = root) {
     }
   });
 }
-start('Users service', ['services/users/server.mjs']);
-start('Products service', ['services/products/server.mjs']);
-start('Gateway', ['apps/gateway/server.mjs']);
+
+start('Users service', ['services/users/server.mjs'], root, { USERS_PORT: usersPort, PORT: usersPort });
+start('Products service', ['services/products/server.mjs'], root, {
+  PRODUCTS_PORT: productsPort,
+  PORT: productsPort,
+});
+start('Gateway', ['apps/gateway/server.mjs'], root, { GATEWAY_PORT: gatewayPort, PORT: gatewayPort });
 start(
   'Dashboard',
   [
@@ -50,9 +62,11 @@ start(
     '--hostname',
     '127.0.0.1',
     '--port',
-    process.env.DASHBOARD_PORT || '3000',
+    dashboardPort,
   ],
   dashboard,
+  { PORT: dashboardPort },
 );
+
 process.on('SIGINT', () => stop());
 process.on('SIGTERM', () => stop());

@@ -41,14 +41,20 @@ export function createSampleApp(name, initialItems) {
   );
   return app;
 }
+
 export function runSampleService(name, items, port) {
-  const host = process.env.HOST || '127.0.0.1';
+  const isProduction = process.env.NODE_ENV === 'production';
+  const host = process.env.HOST || (isProduction ? '0.0.0.0' : '127.0.0.1');
   const server = createSampleApp(name, items).listen(port, host, () =>
     console.log(`${name} service: http://${host}:${port}`),
   );
   server.on('error', (error) => {
-    console.error(error.message);
+    console.error(`${name} service error:`, error.message);
     process.exitCode = 1;
   });
-  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => server.close());
+  for (const signal of ['SIGINT', 'SIGTERM']) {
+    process.on(signal, () => {
+      server.close();
+    });
+  }
 }
