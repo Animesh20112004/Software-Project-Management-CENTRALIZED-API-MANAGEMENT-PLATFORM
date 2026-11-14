@@ -39,6 +39,3 @@ services:
       # Connection string to Neon / external PostgreSQL (configure in Render Dashboard)
       - key: DATABASE_URL
         sync: false
-      # Optional external Redis if using RATE_LIMIT_MODE=redis
-      - key: REDIS_URL
-        sync: false

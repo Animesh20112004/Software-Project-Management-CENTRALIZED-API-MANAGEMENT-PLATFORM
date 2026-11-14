@@ -5,6 +5,17 @@
 
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+
+// Auto-load .env and .env.local if present in environment
+if (typeof process.loadEnvFile === 'function') {
+  try {
+    process.loadEnvFile('.env');
+  } catch {}
+  try {
+    process.loadEnvFile('.env.local');
+  } catch {}
+}
+
 import { validateEnvironment } from '../apps/gateway/config.mjs';
 
 // Validate environment variables before spawning any process
@@ -28,6 +39,9 @@ const sharedEnv = {
   USERS_URL: process.env.USERS_URL || `http://127.0.0.1:${usersPort}`,
   PRODUCTS_URL: process.env.PRODUCTS_URL || `http://127.0.0.1:${productsPort}`,
   HOST: process.env.HOST || '0.0.0.0',
+  DASHBOARD_ORIGINS:
+    process.env.DASHBOARD_ORIGINS ||
+    `http://localhost:${publicPort},http://127.0.0.1:${publicPort},http://localhost:3000,http://127.0.0.1:3000`,
 };
 
 const children = [];
